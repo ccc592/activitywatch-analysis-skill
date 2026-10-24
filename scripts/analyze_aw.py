@@ -80,7 +80,7 @@ def load_category_rules(config_path: Optional[str] = None) -> dict:
     """Load category rules from config file or use defaults."""
     if config_path and Path(config_path).exists():
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 # Remove comments
                 return {k: v for k, v in config.items() if not k.startswith('_')}
@@ -92,7 +92,9 @@ CATEGORY_RULES = dict(DEFAULT_CATEGORY_RULES)  # Mutable copy, will be updated w
 
 # Apps that should have title-level breakdown (can be overridden by config)
 BROWSER_APPS = ["Google Chrome", "Safari", "Firefox", "Arc", "Brave", "Edge",
-                "ChatGPT Atlas", "Opera", "Vivaldi", "Chromium"]
+                "ChatGPT Atlas", "Opera", "Vivaldi", "Chromium",
+                # Windows process names (fork addition)
+                "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe"]
 
 # Telegram chat categorization rules (can be overridden by config)
 TELEGRAM_CHAT_RULES = {}
@@ -194,6 +196,22 @@ KNOWN_SITES = {
     'instagram': ('Instagram', 'social_media', -0.3),
     'reddit': ('Reddit', 'social_media', -0.3),
     'tiktok': ('TikTok', 'social_media', -0.4),
+
+    # Chinese social / short-video / feeds (fork addition)
+    '抖音': ('Douyin', 'social_media', -0.5),
+    'douyin': ('Douyin', 'social_media', -0.5),
+    '快手': ('Kuaishou', 'social_media', -0.5),
+    '微博': ('Weibo', 'social_media', -0.4),
+    'weibo': ('Weibo', 'social_media', -0.4),
+    '小红书': ('Xiaohongshu', 'social_media', -0.4),
+    'xiaohongshu': ('Xiaohongshu', 'social_media', -0.4),
+    '知乎': ('Zhihu', 'social_media', -0.3),
+    'zhihu': ('Zhihu', 'social_media', -0.3),
+    '哔哩哔哩': ('Bilibili', 'video', -0.3),
+    'bilibili': ('Bilibili', 'video', -0.3),
+    '虎扑': ('Hupu', 'social_media', -0.4),
+    'v2ex': ('V2EX', 'social_media', -0.2),
+    'nodeseek': ('NodeSeek', 'social_media', -0.2),
 
     # Learning
     'coursera': ('Coursera', 'learning', 0.8),
@@ -549,6 +567,10 @@ def analyze_web_data(web_events: List[dict], window_events: Optional[List[dict]]
         'aistudio.google.com': ('ai_tools', 0.8),
         'perplexity.ai': ('ai_tools', 0.7),
         'huggingface.co': ('ai_tools', 0.8),
+        'claude.com': ('ai_tools', 0.8),
+        'openrouter.ai': ('ai_tools', 0.7),
+        'deepseek.com': ('ai_tools', 0.8),
+        'gemini.google.com': ('ai_tools', 0.8),
 
         # Writing & Docs
         'docs.google.com': ('writing', 0.7),
@@ -602,7 +624,38 @@ def analyze_web_data(web_events: List[dict], window_events: Optional[List[dict]]
         'hulu.com': ('entertainment', -0.5),
         'hbomax.com': ('entertainment', -0.5),
         'paramountplus.com': ('entertainment', -0.5),
+        # Chinese platforms (fork addition)
+        'douyin.com': ('social_media', -0.5),
+        'kuaishou.com': ('social_media', -0.5),
+        'weibo.com': ('social_media', -0.4),
+        'xiaohongshu.com': ('social_media', -0.4),
+        'zhihu.com': ('social_media', -0.3),
+        'bilibili.com': ('video', -0.3),
+        'hupu.com': ('social_media', -0.4),
+        'v2ex.com': ('social_media', -0.2),
+        'nodeseek.com': ('social_media', -0.2),
+        'iqiyi.com': ('entertainment', -0.5),
+        'youku.com': ('entertainment', -0.5),
+        'v.qq.com': ('entertainment', -0.5),
     }
+
+    # Fork addition: user overrides from the category config ("domains": {"example.com": ["category", weight]})
+    for _dom, _val in (CATEGORY_RULES.get("domains") or {}).items():
+        _cat, _w = _val[0], float(_val[1])
+        PRODUCTIVE_DOMAINS.pop(_dom, None)
+        DISTRACTING_DOMAINS.pop(_dom, None)
+        (PRODUCTIVE_DOMAINS if _w > 0 else DISTRACTING_DOMAINS if _w < 0 else PRODUCTIVE_DOMAINS)[_dom] = (_cat, _w)
+
+    def _match_domain(domain: str, table: dict):
+        """Exact match first, then parent-domain match (message.bilibili.com -> bilibili.com)."""
+        if domain in table:
+            return domain
+        parts = domain.split('.')
+        for i in range(1, len(parts) - 1):
+            parent = '.'.join(parts[i:])
+            if parent in table:
+                return parent
+        return None
 
     for event in web_events:
         raw_duration = event['duration']
@@ -645,11 +698,13 @@ def analyze_web_data(web_events: List[dict], window_events: Optional[List[dict]]
         weight = 0.0
         productive = 'neutral'
 
-        if domain in PRODUCTIVE_DOMAINS:
-            category, weight = PRODUCTIVE_DOMAINS[domain]
-            productive = 'yes'
-        elif domain in DISTRACTING_DOMAINS:
-            category, weight = DISTRACTING_DOMAINS[domain]
+        _p = _match_domain(domain, PRODUCTIVE_DOMAINS)
+        _d = None if _p else _match_domain(domain, DISTRACTING_DOMAINS)
+        if _p:
+            category, weight = PRODUCTIVE_DOMAINS[_p]
+            productive = 'yes' if weight > 0 else 'neutral'
+        elif _d:
+            category, weight = DISTRACTING_DOMAINS[_d]
             productive = 'no'
 
         domain_breakdown.append({
@@ -744,7 +799,7 @@ def categorize_activity(app: str, title: str) -> Tuple[str, float]:
     title_lower = title.lower()
 
     # Special handling for Telegram - check chat-specific rules first
-    if app == "Telegram" and TELEGRAM_CHAT_RULES:
+    if "telegram" in app.lower() and TELEGRAM_CHAT_RULES:
         for category, rule_data in TELEGRAM_CHAT_RULES.items():
             patterns = rule_data.get("patterns", [])
             weight = rule_data.get("weight", 0.0)
@@ -885,7 +940,7 @@ def analyze_csv_enhanced(filepath: str, days: Optional[int] = None, tz_name: Opt
             category_time[category] += duration
 
             # Track Telegram time separately (work vs personal)
-            if app == "Telegram":
+            if "telegram" in app.lower():
                 if weight >= 0.3:  # product_work, content_creation, communication_work
                     telegram_work_time += duration
                 else:  # communication_personal or uncategorized
@@ -1556,13 +1611,16 @@ Examples:
     # Update module-level config variables
     if config_path:
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 full_config = json.load(f)
             # Load category rules (filter out special sections)
             loaded_rules = {k: v for k, v in full_config.items()
                           if not k.startswith('_') and isinstance(v, dict) and 'weight' in v}
             CATEGORY_RULES.clear()
             CATEGORY_RULES.update(loaded_rules)
+            # Fork addition: per-domain overrides for the Chrome web-watcher breakdown
+            if isinstance(full_config.get("domains"), dict):
+                CATEGORY_RULES["domains"] = full_config["domains"]
             # Load Telegram chat rules
             TELEGRAM_CHAT_RULES.clear()
             TELEGRAM_CHAT_RULES.update(load_telegram_chat_rules(full_config))

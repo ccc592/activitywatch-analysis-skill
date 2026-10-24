@@ -1,0 +1,503 @@
+{
+  "_comment": "Windows + Chinese-platform variant (fork addition). Same schema as category_config.json; use with --config. Personal overrides (your own sites/apps) belong in a private local config, not in this public file.",
+  "_telegram_chats_comment": "Telegram chat categorization - matches chat names in window titles. Checked BEFORE default Telegram categorization. Replace examples with YOUR chat names.",
+  "telegram_chats": {
+    "content_creation": {
+      "weight": 0.7,
+      "patterns": [
+        "My Channel",
+        "Zettelkasten"
+      ]
+    },
+    "product_work": {
+      "weight": 0.8,
+      "patterns": [
+        "Team Chat",
+        "Course Chat",
+        "admin-monitoring",
+        "bot-alerts"
+      ]
+    },
+    "communication_work": {
+      "weight": 0.3,
+      "patterns": [
+        "Work Group",
+        "Project Chat"
+      ]
+    }
+  },
+  "_browser_apps_comment": "Apps that are browsers - will get title-based categorization using KNOWN_SITES",
+  "browser_apps": [
+    "Arc",
+    "Brave",
+    "ChatGPT Atlas",
+    "Chromium",
+    "Edge",
+    "Firefox",
+    "Google Chrome",
+    "Opera",
+    "Safari",
+    "Vivaldi",
+    "brave.exe",
+    "chrome.exe",
+    "firefox.exe",
+    "msedge.exe",
+    "opera.exe",
+    "vivaldi.exe"
+  ],
+  "deep_work": {
+    "weight": 1.0,
+    "description": "Core productive work - coding, building",
+    "apps": [
+      "Terminal",
+      "Cursor",
+      "Code",
+      "VSCode",
+      "PyCharm",
+      "IntelliJ",
+      "Xcode",
+      "nvim",
+      "vim",
+      "emacs",
+      "Warp",
+      "iTerm2",
+      "WindowsTerminal",
+      "Code.exe",
+      "Cursor.exe",
+      "pycharm64",
+      "idea64",
+      "wezterm",
+      "Kiro"
+    ],
+    "titles": [
+      "claude code",
+      "git ",
+      "python",
+      "node ",
+      "npm ",
+      "cargo ",
+      "make ",
+      "docker",
+      "✳ "
+    ]
+  },
+  "ai_tools": {
+    "weight": 0.8,
+    "description": "AI assistants and platforms",
+    "apps": [
+      "Claude",
+      "ChatGPT Atlas",
+      "ChatGPT",
+      "DeepSeek"
+    ],
+    "titles": [
+      "ChatGPT",
+      "Claude",
+      "OpenAI Platform",
+      "Google AI Studio",
+      "LangSmith",
+      "Anthropic",
+      "Perplexity",
+      "DeepSeek",
+      "Kimi",
+      "通义",
+      "豆包"
+    ]
+  },
+  "development": {
+    "weight": 0.8,
+    "description": "Dev tools, databases, infrastructure",
+    "apps": [
+      "DBeaver",
+      "Postman",
+      "TablePlus",
+      "Sequel Pro",
+      "pgAdmin",
+      "Docker Desktop"
+    ],
+    "titles": [
+      "Supabase",
+      "Firebase",
+      "Vercel",
+      "Netlify",
+      "localhost",
+      "127.0.0.1",
+      "GitHub",
+      "GitLab",
+      "PageSpeed",
+      "DevTools",
+      "Fly.io",
+      "Railway",
+      "Render",
+      "AWS",
+      "n8n"
+    ]
+  },
+  "writing": {
+    "weight": 0.9,
+    "description": "Writing and note-taking",
+    "apps": [
+      "Notion",
+      "Obsidian",
+      "Bear",
+      "Ulysses",
+      "iA Writer",
+      "Notes",
+      "TextEdit",
+      "Craft",
+      "Notion.exe",
+      "Obsidian.exe",
+      "Typora",
+      "WINWORD"
+    ],
+    "titles": [
+      "Google Docs",
+      "Notion –",
+      "Obsidian",
+      "飞书文档",
+      "语雀"
+    ]
+  },
+  "design": {
+    "weight": 0.9,
+    "description": "Design and visual work",
+    "apps": [
+      "Figma",
+      "Sketch",
+      "Adobe XD",
+      "Photoshop",
+      "Illustrator",
+      "Canva",
+      "Framer"
+    ],
+    "titles": [
+      "Figma",
+      "Canva",
+      "Webflow",
+      "Framer"
+    ]
+  },
+  "presentations": {
+    "weight": 0.7,
+    "description": "Slide decks and presentations",
+    "apps": [
+      "Keynote",
+      "Microsoft PowerPoint",
+      "Google Slides",
+      "POWERPNT"
+    ],
+    "titles": [
+      "Google Slides",
+      "Pitch –",
+      "Gamma"
+    ]
+  },
+  "spreadsheets": {
+    "weight": 0.6,
+    "description": "Data and spreadsheets",
+    "apps": [
+      "Numbers",
+      "Microsoft Excel",
+      "EXCEL"
+    ],
+    "titles": [
+      "Google Sheets",
+      "Airtable"
+    ]
+  },
+  "meetings": {
+    "weight": 0.5,
+    "description": "Video calls and meetings",
+    "apps": [
+      "zoom.us",
+      "Zoom",
+      "Google Meet",
+      "Microsoft Teams",
+      "Slack Huddle",
+      "Around",
+      "Loom",
+      "腾讯会议",
+      "wemeetapp",
+      "Feishu",
+      "Lark"
+    ],
+    "titles": [
+      "Zoom Meeting",
+      "Google Meet",
+      "Teams Meeting"
+    ]
+  },
+  "communication_work": {
+    "weight": 0.3,
+    "description": "Work messaging",
+    "apps": [
+      "Slack",
+      "Discord"
+    ],
+    "titles": [
+      "Slack |",
+      "Discord |"
+    ]
+  },
+  "communication_personal": {
+    "weight": 0.1,
+    "description": "Personal messaging",
+    "apps": [
+      "Telegram",
+      "Messages",
+      "WhatsApp",
+      "Signal",
+      "Weixin",
+      "WeChat",
+      "QQ.exe",
+      "Telegram.exe"
+    ],
+    "titles": []
+  },
+  "email": {
+    "weight": 0.3,
+    "description": "Email clients and webmail",
+    "apps": [
+      "Mail",
+      "Outlook",
+      "Spark",
+      "Superhuman"
+    ],
+    "titles": [
+      "Gmail",
+      "Inbox",
+      "Outlook",
+      "ProtonMail"
+    ]
+  },
+  "learning": {
+    "weight": 0.7,
+    "description": "Courses, tutorials, documentation",
+    "apps": [],
+    "titles": [
+      "Coursera",
+      "Udemy",
+      "LinkedIn Learning",
+      "tutorial",
+      "course",
+      "documentation",
+      "docs.",
+      "MDN",
+      "Stack Overflow",
+      "Medium –",
+      "教程",
+      "课程",
+      "文档",
+      "Documentation"
+    ]
+  },
+  "product_work": {
+    "weight": 0.8,
+    "description": "Your product/business apps - ADD YOUR OWN",
+    "apps": [],
+    "titles": []
+  },
+  "sales_tools": {
+    "weight": 0.9,
+    "description": "CRM, prospecting, pipeline - ADD YOUR OWN",
+    "apps": [],
+    "titles": [
+      "HubSpot",
+      "Pipedrive",
+      "Apollo",
+      "Salesforce",
+      "Close"
+    ]
+  },
+  "business_tools": {
+    "weight": 0.5,
+    "description": "Business and analytics tools",
+    "apps": [
+      "Stripe"
+    ],
+    "titles": [
+      "Stripe",
+      "PayPal",
+      "Google Calendar",
+      "Calendly",
+      "Google Analytics",
+      "Mixpanel",
+      "Amplitude",
+      "Linear",
+      "Jira",
+      "Asana"
+    ]
+  },
+  "content_creation": {
+    "weight": 0.7,
+    "description": "Creating content for publishing",
+    "apps": [],
+    "titles": [
+      "YouTube Studio",
+      "Creator Studio",
+      "Descript",
+      "Channel content"
+    ]
+  },
+  "social_media": {
+    "weight": -0.3,
+    "description": "Social media browsing",
+    "apps": [],
+    "titles": [
+      "Twitter",
+      "Home / X",
+      "LinkedIn Feed",
+      "Facebook",
+      "Instagram",
+      "TikTok",
+      "Reddit",
+      "抖音",
+      "快手",
+      "微博",
+      "小红书",
+      "知乎",
+      "虎扑",
+      "V2EX",
+      "NodeSeek"
+    ]
+  },
+  "entertainment": {
+    "weight": -0.5,
+    "description": "Streaming and entertainment",
+    "apps": [
+      "Netflix",
+      "Spotify",
+      "Apple Music",
+      "VLC",
+      "IINA",
+      "Apple TV",
+      "PotPlayer",
+      "Steam",
+      "cloudmusic",
+      "QQMusic"
+    ],
+    "titles": [
+      "Netflix",
+      "Prime Video",
+      "Hulu",
+      "Disney+",
+      "HBO Max",
+      "Twitch",
+      "Watch ",
+      "Playing",
+      "YouTube –",
+      "哔哩哔哩",
+      "爱奇艺",
+      "优酷",
+      "腾讯视频",
+      "斗鱼",
+      "虎牙"
+    ]
+  },
+  "news": {
+    "weight": -0.2,
+    "description": "News and current events",
+    "apps": [],
+    "titles": [
+      "News",
+      "CNN",
+      "BBC",
+      "NYT",
+      "WSJ",
+      "Reuters",
+      "Hacker News",
+      "TechCrunch"
+    ]
+  },
+  "system": {
+    "weight": 0.0,
+    "description": "System utilities (excluded from scoring)",
+    "apps": [
+      "loginwindow",
+      "Finder",
+      "System Preferences",
+      "System Settings",
+      "Activity Monitor",
+      "SystemUIServer",
+      "UserNotificationCenter",
+      "Spotlight",
+      "Alfred",
+      "Raycast",
+      "Nimble Commander",
+      "Preview",
+      "1Password",
+      "Bitwarden",
+      "explorer.exe",
+      "SearchHost",
+      "ShellExperienceHost",
+      "LockApp",
+      "ApplicationFrameHost"
+    ],
+    "titles": [
+      "Finder",
+      "Desktop",
+      "ActivityWatch"
+    ]
+  },
+  "browser_idle": {
+    "weight": 0.0,
+    "description": "Empty browser tabs",
+    "apps": [],
+    "titles": [
+      "New Tab",
+      "Untitled",
+      "about:blank",
+      "Start Page"
+    ]
+  },
+  "domains": {
+    "douyin.com": [
+      "social_media",
+      -0.5
+    ],
+    "kuaishou.com": [
+      "social_media",
+      -0.5
+    ],
+    "weibo.com": [
+      "social_media",
+      -0.4
+    ],
+    "xiaohongshu.com": [
+      "social_media",
+      -0.4
+    ],
+    "zhihu.com": [
+      "social_media",
+      -0.3
+    ],
+    "bilibili.com": [
+      "video",
+      -0.3
+    ],
+    "x.com": [
+      "social_media",
+      -0.3
+    ],
+    "twitter.com": [
+      "social_media",
+      -0.3
+    ],
+    "youtube.com": [
+      "video",
+      -0.2
+    ],
+    "claude.com": [
+      "ai_tools",
+      0.8
+    ],
+    "deepseek.com": [
+      "ai_tools",
+      0.8
+    ],
+    "openrouter.ai": [
+      "ai_tools",
+      0.7
+    ]
+  }
+}

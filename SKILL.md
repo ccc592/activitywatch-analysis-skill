@@ -1,5 +1,6 @@
 ---
-description: "Focus Engineering with ActivityWatch — analyze app usage, detect death loops, calculate focus scores, generate weekly insights. Three modes: calibrate (first run), analyze (daily/weekly), review (coaching)."
+name: activitywatch
+description: "Focus Engineering with ActivityWatch — analyze app usage, detect death loops, calculate focus scores, generate weekly insights. Modes: remote coach (read pushed daily summaries on a server), calibrate (first run), analyze (daily/weekly), review (coaching)."
 allowed-tools:
   - Read
   - Write
@@ -19,6 +20,60 @@ Check what the user typed:
 - `/activitywatch calibrate` or first run → **Calibrate Mode**
 - `/activitywatch` or `/activitywatch today` or `/activitywatch week` → **Analyze Mode**
 - `/activitywatch review` → **Review Mode** (coaching perspective)
+
+## MODE 0: Remote coach (Hermes on a server) — fork addition
+
+Use this mode when you run on a server, not on the machine that has ActivityWatch
+(you cannot reach `localhost:5600`). The desktop pushes an aggregated summary every
+30 minutes with `scripts/push_to_vps.py` (see "Remote push setup" below), so you
+**read files instead of fetching**:
+
+- `~/coach/aw/YYYY-MM-DD.json` — one file per day, overwritten on each push.
+  Shape: `{"date", "generated_at", "summary": <analyze_aw.py JSON output>}`.
+- Check `generated_at` first. Older than ~45 min during the day means the PC is
+  off, asleep, or the user is away from it — say "no fresh desktop data", never
+  invent numbers. No file at all for a day = no desktop use recorded.
+
+Fields worth using (all inside `summary`):
+
+| Field | Use |
+|---|---|
+| `scores.productivity_score`, `scores.focus_score`, `scores.combined_score` | 0-100 headline numbers |
+| `time_totals.active_hours` | total desktop time |
+| `category_breakdown[]` | hours per category (`deep_work`, `social_media`, `video`, `entertainment`, `uncategorized`, ...) |
+| `top_apps[]` | hours per app |
+| `chrome_extension.domain_breakdown[]` | hours per website, with category |
+| `hourly_analysis` | which hours were productive vs scattered |
+| `death_loops[]` | repetitive A<->B switching patterns |
+| `context_switching.switches_per_hour` | attention fragmentation |
+
+To get a time window (for example one focus block), compare the block against
+`hourly_analysis` and the day file pushed right before/after it; the summary is per
+day, so per-block numbers are approximations — say so.
+
+Calibration in this mode: list `uncategorized` items with real time from the latest
+file, ask the user what each one is, and record the answers as
+`{"domains": {"site.com": ["category", weight]}}` (or app/title entries) for the
+user to put in `my_categories.json` on the desktop — that file is private and is
+merged over `category_config.windows-zh.json` at push time.
+
+### Remote push setup (desktop side)
+
+1. `pip install --user aw-client` (plus the Python that ActivityWatch can reach on
+   `localhost:5600`).
+2. Copy `scripts/analyze_aw.py`, `scripts/push_to_vps.py`,
+   `scripts/category_config.windows-zh.json` to a folder; create `push_config.json`
+   (host, port, user, key) and an optional private `my_categories.json`.
+3. Generate a dedicated key and pin it on the server to a forced command that only
+   stores stdin, e.g. in `authorized_keys`:
+   `command="/usr/local/bin/aw-receive",restrict ssh-ed25519 AAAA... aw-push`
+   where `aw-receive` validates `SSH_ORIGINAL_COMMAND` = `aw-push YYYY-MM-DD`,
+   checks the JSON and writes `~/coach/aw/<date>.json`.
+4. Schedule `push_to_vps.py` every 30 min (Task Scheduler / cron), or start
+   `push_to_vps.py --loop 1800` from the login Startup folder.
+
+On Windows run Python with `-X utf8`, and leave `--timezone` off unless the
+`tzdata` package is installed (the system zone is used by default).
 
 ## MODE 1: Calibrate (first run)
 
@@ -430,6 +485,8 @@ Use insights to configure blocking tools. See `references/blocking_guides.md` fo
 
 ## Focus Guard - App Blocker
 
+> Fork note: macOS only (uses `osascript`). Not used by the remote coach mode.
+
 Focus Guard is an open-source app blocker for macOS that prevents distracting apps from running during focus hours.
 
 ### Quick Start
@@ -507,6 +564,8 @@ activitywatch-analysis/
 ## Privacy
 
 All analysis runs locally. No data leaves your machine unless you choose to share it.
+In remote coach mode only the aggregated daily summary is pushed (categories, app and
+site totals, scores) — no raw event stream and no YouTube video titles.
 
 ## Requirements
 
