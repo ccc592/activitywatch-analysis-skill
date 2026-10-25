@@ -282,8 +282,14 @@
   },
   "learning": {
     "weight": 0.7,
-    "description": "Courses, tutorials, documentation",
-    "apps": [],
+    "description": "Courses, tutorials, documentation, language study",
+    "apps": [
+      "anki",
+      "supermemo",
+      "sm18",
+      "sm19",
+      "sm20"
+    ],
     "titles": [
       "Coursera",
       "Udemy",
@@ -507,6 +513,30 @@
     ],
     "openrouter.ai": [
       "ai_tools",
+      0.7
+    ],
+    "cambridge.org": [
+      "learning",
+      0.8
+    ],
+    "ielts.org": [
+      "learning",
+      0.8
+    ],
+    "ielts.com.au": [
+      "learning",
+      0.8
+    ],
+    "italki.com": [
+      "learning",
+      0.9
+    ],
+    "ankiweb.net": [
+      "learning",
+      0.8
+    ],
+    "youdao.com": [
+      "learning",
       0.7
     ]
   }
