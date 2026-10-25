@@ -48,6 +48,8 @@ comes after `23:45`):
 |---|---|
 | `totals.active_min` | time at the computer so far |
 | `totals.productive_min` / `neutral_min` / `distracting_min`, `productive_pct`, `distracting_pct` | headline split. Productive = category weight >= 0.5, distracting = weight < 0 |
+| `totals.away_min` | computer on, nobody at it (no input for 3+ min) |
+| `totals.no_data_min` | computer off or asleep (or the watcher was not running) |
 | `totals.first_active`, `totals.last_active` | first and last computer use of the coach day (late nights) |
 | `totals.longest_focus` | longest productive run (`start`, `end`, `min`), interruptions up to 2 min allowed |
 | `totals.switches_per_hour` | app switches per active hour (fragmentation) |
@@ -56,12 +58,17 @@ comes after `23:45`):
 | `sites[]` | minutes per website (browser time split by the active tab) |
 | `distracting[]` | top distracting sites/apps with minutes |
 | `sessions[]` | computer sessions (breaks under 10 min merged) |
-| `slots[]` | 15-minute timeline: `t`, `active`, `productive`, `distracting`, `top` category, `top_distracting` |
+| `away_periods[]` | away stretches of 5+ min (`start`, `end`, `min`) while the computer was on |
+| `slots[]` | 15-minute timeline: `t`, `active`, `productive`, `distracting`, `away`, `top` category, `top_distracting` (a slot with neither active nor away time = computer off) |
 | `uncategorized[]` | biggest unclassified items with a sample title (calibration) |
 | `data_quality` | `afk_filter` (false = presence could not be checked), `web_watchers`, `extra_present_min` (audio/video presence added), `last_window_event` |
 
 To judge one time window (for example a focus block), sum the `slots[]` that fall
 inside it — that is accurate to 15 minutes.
+
+Away is a fact, not a verdict: it can be the phone, but also the gym, a meal, a
+call or thinking on paper. Report it neutrally ("离开电脑 40 分钟") and ask; compare
+with the phone screen-time report in the evening before drawing conclusions.
 
 Calibration in this mode: list `uncategorized` items with minutes and sample
 titles from the latest file, ask the user what each one is, and record the answers

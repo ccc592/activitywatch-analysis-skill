@@ -12,6 +12,12 @@ What counts as computer time
       - a focused app listed in ``always_active_apps`` (video players)
     also count as present.
 
+Away time
+    Periods when the computer was on but nobody was at it (AFK, minus the
+    presence additions above) are reported separately as ``away``; periods with
+    no AFK data at all (computer off/asleep) as ``no_data``. Nothing about what
+    was on screen while away is sent.
+
 Browser time
     Browser window time is split by the web watcher's active-tab events, so
     each minute in Chrome is attributed to the site that was open, not to
@@ -259,6 +265,23 @@ def intersect(events: list, intervals: list) -> list:
     return out
 
 
+def subtract(a: list, b: list) -> list:
+    """Parts of merged intervals `a` not covered by merged intervals `b`."""
+    out, j = [], 0
+    for s, t in a:
+        while j < len(b) and b[j][1] <= s:
+            j += 1
+        cur, k = s, j
+        while k < len(b) and b[k][0] < t:
+            if b[k][0] > cur:
+                out.append((cur, b[k][0]))
+            cur = max(cur, b[k][1])
+            k += 1
+        if cur < t:
+            out.append((cur, t))
+    return out
+
+
 def split_by(s: float, t: float, events: list, starts: list) -> list:
     """Cover [s, t) with the sorted, non-overlapping events; gaps get data None."""
     out, cur = [], s
@@ -386,8 +409,9 @@ def summarize(raw: dict, rules: Rules, start: float, end: float, day: str,
 
     # 1. Presence: not-afk, plus audible focused browser tab, plus always-active apps.
     afk_filter = raw.get("afk") is not None
+    afk = tidy(raw["afk"]) if afk_filter else []
     if afk_filter:
-        not_afk = merge([(s, t) for s, t, d in tidy(raw["afk"]) if d.get("status") == "not-afk"])
+        not_afk = merge([(s, t) for s, t, d in afk if d.get("status") == "not-afk"])
     else:
         not_afk = merge([(s, t) for s, t, _ in window])
     extra = []
@@ -398,6 +422,12 @@ def summarize(raw: dict, rules: Rules, start: float, end: float, day: str,
     extra += [(s, t) for s, t, d in window
               if any(p in (d.get("app") or "").lower() for p in rules.always_active)]
     present = merge(not_afk + extra)
+    # Away = computer on, nobody at it. No data = computer off/asleep or watcher not running.
+    if afk_filter:
+        away = subtract(merge([(s, t) for s, t, d in afk if d.get("status") == "afk"]), present)
+        no_data = subtract([(start, end)], merge([(s, t) for s, t, _ in afk] + present))
+    else:
+        away, no_data = [], []
 
     # 2. Active pieces, browser time split by active tab.
     pieces = []  # (s, t, app, label, category, weight, title)
@@ -447,30 +477,39 @@ def summarize(raw: dict, rules: Rules, start: float, end: float, day: str,
     # 4. Timeline slots.
     slot_s = SLOT_MIN * 60
     slots: dict[int, dict] = {}
-    for s, t, app, label, cat, weight, _ in pieces:
+
+    def slot_spans(s: float, t: float):
         cur = s
         while cur < t:
             idx = int((cur - start) // slot_s)
             nxt = min(t, start + (idx + 1) * slot_s)
             sl = slots.setdefault(idx, {"active": 0.0, "productive": 0.0, "neutral": 0.0,
-                                        "distracting": 0.0, "cats": defaultdict(float),
+                                        "distracting": 0.0, "away": 0.0, "cats": defaultdict(float),
                                         "dist": defaultdict(float)})
-            dur = nxt - cur
-            k = kind(weight)
+            yield sl, nxt - cur
+            cur = nxt
+
+    for s, t, app, label, cat, weight, _ in pieces:
+        k = kind(weight)
+        for sl, dur in slot_spans(s, t):
             sl["active"] += dur
             sl[k] += dur
             sl["cats"][cat] += dur
             if k == "distracting":
                 sl["dist"][label] += dur
-            cur = nxt
+    for s, t in away:
+        for sl, dur in slot_spans(s, t):
+            sl["away"] += dur
     slot_rows = []
     for idx in sorted(slots):
         sl = slots[idx]
-        if sl["active"] < 30:
+        if sl["active"] < 30 and sl["away"] < 30:
             continue
         row = {"t": _hm(start + idx * slot_s), "active": _min(sl["active"]),
                "productive": _min(sl["productive"]), "distracting": _min(sl["distracting"]),
-               "top": max(sl["cats"], key=sl["cats"].get)}
+               "away": _min(sl["away"])}
+        if sl["cats"]:
+            row["top"] = max(sl["cats"], key=sl["cats"].get)
         if sl["dist"]:
             row["top_distracting"] = max(sl["dist"], key=sl["dist"].get)
         slot_rows.append(row)
@@ -505,6 +544,8 @@ def summarize(raw: dict, rules: Rules, start: float, end: float, day: str,
             "distracting_min": _min(by_kind["distracting"]),
             "productive_pct": round(100 * by_kind["productive"] / active, 1) if active else 0.0,
             "distracting_pct": round(100 * by_kind["distracting"] / active, 1) if active else 0.0,
+            "away_min": _min(total(away)),
+            "no_data_min": _min(total(no_data)),
             "first_active": sessions[0]["start"] if sessions else None,
             "last_active": sessions[-1]["end"] if sessions else None,
             "switches_per_hour": round(switches / (active / 3600), 1) if active >= 600 else None,
@@ -522,6 +563,9 @@ def summarize(raw: dict, rules: Rules, start: float, end: float, day: str,
                           for (app, label), u in sorted(uncategorized.items(), key=lambda kv: -kv[1]["sec"])[:10]
                           if u["sec"] >= 60],
         "sessions": sessions,
+        "away_periods": [{"start": _hm(s), "end": _hm(t),
+                          "min": _min(total(intersect([(s, t, None)], away)))}
+                         for s, t in merge(away, gap=FOCUS_GAP_S) if t - s >= 5 * 60],
         "slots": slot_rows,
     }
 
