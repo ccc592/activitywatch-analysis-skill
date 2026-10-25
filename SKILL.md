@@ -21,7 +21,7 @@ Check what the user typed:
 - `/activitywatch` or `/activitywatch today` or `/activitywatch week` → **Analyze Mode**
 - `/activitywatch review` → **Review Mode** (coaching perspective)
 
-## MODE 0: Remote coach (Hermes on a server) — fork addition
+## MODE 0: Remote coach (Hermes on a server)
 
 Use this mode when you run on a server, not on the machine that has ActivityWatch
 (you cannot reach `localhost:5600`). The desktop pushes a compact summary every
@@ -506,7 +506,7 @@ Use insights to configure blocking tools. See `references/blocking_guides.md` fo
 
 ## Focus Guard - App Blocker
 
-> Fork note: macOS only (uses `osascript`). Not used by the remote coach mode.
+> macOS only (uses `osascript`). Not used in remote coach mode.
 
 Focus Guard is an open-source app blocker for macOS that prevents distracting apps from running during focus hours.
 
