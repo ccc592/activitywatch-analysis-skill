@@ -24,56 +24,70 @@ Check what the user typed:
 ## MODE 0: Remote coach (Hermes on a server) — fork addition
 
 Use this mode when you run on a server, not on the machine that has ActivityWatch
-(you cannot reach `localhost:5600`). The desktop pushes an aggregated summary every
-30 minutes with `scripts/push_to_vps.py` (see "Remote push setup" below), so you
-**read files instead of fetching**:
+(you cannot reach `localhost:5600`). The desktop pushes a compact summary every
+30 minutes with `scripts/push_to_vps.py`, built by `scripts/coach_summary.py`
+(see "Remote push setup" below), so you **read files instead of fetching**:
 
-- `~/coach/aw/YYYY-MM-DD.json` — one file per day, overwritten on each push.
-  Shape: `{"date", "generated_at", "summary": <analyze_aw.py JSON output>}`.
+- `~/coach/aw/YYYY-MM-DD.json` — one file per **coach day**, overwritten on each
+  push. The coach day runs from 04:00 to 04:00 next morning (`summary.window`), so
+  a late night belongs to the evening before it. Shape:
+  `{"date", "generated_at", "summary": {...}}` with `summary.schema == 2`.
 - Check `generated_at` first. Older than ~45 min during the day means the PC is
   off, asleep, or the user is away from it — say "no fresh desktop data", never
-  invent numbers. No file at all for a day = no desktop use recorded.
+  invent numbers. No file for a day = no desktop use recorded.
+- All minutes count **only time at the computer**: window time intersected with
+  ActivityWatch's not-AFK periods (no keyboard/mouse for 3 min = away), plus time
+  when a focused browser tab plays audio or a video player is focused. Reading or
+  watching without input on other apps is under-counted; mention it if it matters.
+- Phone use is not in these files — that comes from the evening screenshot.
 
-Fields worth using (all inside `summary`):
+Fields (all inside `summary`; times are local `HH:MM`; after midnight, `01:15`
+comes after `23:45`):
 
 | Field | Use |
 |---|---|
-| `scores.productivity_score`, `scores.focus_score`, `scores.combined_score` | 0-100 headline numbers |
-| `time_totals.active_hours` | total desktop time |
-| `category_breakdown[]` | hours per category (`deep_work`, `social_media`, `video`, `entertainment`, `uncategorized`, ...) |
-| `top_apps[]` | hours per app |
-| `chrome_extension.domain_breakdown[]` | hours per website, with category |
-| `hourly_analysis` | which hours were productive vs scattered |
-| `death_loops[]` | repetitive A<->B switching patterns |
-| `context_switching.switches_per_hour` | attention fragmentation |
+| `totals.active_min` | time at the computer so far |
+| `totals.productive_min` / `neutral_min` / `distracting_min`, `productive_pct`, `distracting_pct` | headline split. Productive = category weight >= 0.5, distracting = weight < 0 |
+| `totals.first_active`, `totals.last_active` | first and last computer use of the coach day (late nights) |
+| `totals.longest_focus` | longest productive run (`start`, `end`, `min`), interruptions up to 2 min allowed |
+| `totals.switches_per_hour` | app switches per active hour (fragmentation) |
+| `categories[]` | minutes per category with `weight` and `kind` |
+| `apps[]` | minutes per app, with its main category |
+| `sites[]` | minutes per website (browser time split by the active tab) |
+| `distracting[]` | top distracting sites/apps with minutes |
+| `sessions[]` | computer sessions (breaks under 10 min merged) |
+| `slots[]` | 15-minute timeline: `t`, `active`, `productive`, `distracting`, `top` category, `top_distracting` |
+| `uncategorized[]` | biggest unclassified items with a sample title (calibration) |
+| `data_quality` | `afk_filter` (false = presence could not be checked), `web_watchers`, `extra_present_min` (audio/video presence added), `last_window_event` |
 
-To get a time window (for example one focus block), compare the block against
-`hourly_analysis` and the day file pushed right before/after it; the summary is per
-day, so per-block numbers are approximations — say so.
+To judge one time window (for example a focus block), sum the `slots[]` that fall
+inside it — that is accurate to 15 minutes.
 
-Calibration in this mode: list `uncategorized` items with real time from the latest
-file, ask the user what each one is, and record the answers as
-`{"domains": {"site.com": ["category", weight]}}` (or app/title entries) for the
-user to put in `my_categories.json` on the desktop — that file is private and is
-merged over `category_config.windows-zh.json` at push time.
+Calibration in this mode: list `uncategorized` items with minutes and sample
+titles from the latest file, ask the user what each one is, and record the answers
+as `{"domains": {"site.com": ["category", weight]}}` or
+`{"<category>": {"apps": [...], "titles": [...]}}` for the user to put in
+`my_categories.json` on the desktop — that file is private and is merged over
+`category_config.windows-zh.json` at push time.
 
 ### Remote push setup (desktop side)
 
-1. `pip install --user aw-client` (plus the Python that ActivityWatch can reach on
-   `localhost:5600`).
-2. Copy `scripts/analyze_aw.py`, `scripts/push_to_vps.py`,
+1. Python 3.10+ on the machine that runs ActivityWatch (`localhost:5600`); stdlib
+   only, no `aw-client` needed.
+2. Copy `scripts/coach_summary.py`, `scripts/push_to_vps.py`,
    `scripts/category_config.windows-zh.json` to a folder; create `push_config.json`
-   (host, port, user, key) and an optional private `my_categories.json`.
+   (host, port, user, key, optional `day_start_hour`, default 4) and an optional
+   private `my_categories.json`. Test with `python -X utf8 coach_summary.py`.
 3. Generate a dedicated key and pin it on the server to a forced command that only
    stores stdin, e.g. in `authorized_keys`:
    `command="/usr/local/bin/aw-receive",restrict ssh-ed25519 AAAA... aw-push`
    where `aw-receive` validates `SSH_ORIGINAL_COMMAND` = `aw-push YYYY-MM-DD`,
    checks the JSON and writes `~/coach/aw/<date>.json`.
 4. Schedule `push_to_vps.py` every 30 min (Task Scheduler / cron), or start
-   `push_to_vps.py --loop 1800` from the login Startup folder.
+   `push_to_vps.py --loop 1800` from the login Startup folder. After the coach day
+   rolls over it pushes the previous day once more to finalize it.
 
-On Windows run Python with `-X utf8`, and leave `--timezone` off unless the
-`tzdata` package is installed (the system zone is used by default).
+On Windows run Python with `-X utf8`.
 
 ## MODE 1: Calibrate (first run)
 

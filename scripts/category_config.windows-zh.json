@@ -43,7 +43,17 @@
     "firefox.exe",
     "msedge.exe",
     "opera.exe",
-    "vivaldi.exe"
+    "vivaldi.exe",
+    "zen.exe",
+    "FlashBrowser.exe"
+  ],
+  "_always_active_apps_comment": "coach_summary.py: when one of these apps is focused you count as present even without keyboard/mouse input (video players). Case-insensitive substring of the process name.",
+  "always_active_apps": [
+    "potplayer",
+    "vlc",
+    "mpv",
+    "mpc-hc",
+    "mpc-be"
   ],
   "deep_work": {
     "weight": 1.0,

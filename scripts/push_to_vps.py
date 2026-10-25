@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Push today's ActivityWatch summary to the coach VPS (fork addition).
+"""Push the current coach day's ActivityWatch summary to the coach VPS (fork addition).
 
 Runs on the Windows machine that hosts ActivityWatch, e.g. every 30 minutes
 from Task Scheduler:
@@ -19,21 +19,30 @@ Settings come from push_config.json next to this script (not committed):
       "ssh_user": "root",
       "ssh_key": "C:/Users/me/.ssh/aw_push_ed25519",
       "category_config": "category_config.windows-zh.json",
-      "private_config": "my_categories.json"
+      "private_config": "my_categories.json",
+      "day_start_hour": 4
     }
 
-The VPS side should pin that key to a forced command that only accepts the
-summary on stdin (see README). Nothing but the aggregated JSON summary is sent:
-categories, app/site minutes, scores, hourly totals - no raw event stream.
+The summary is built by coach_summary.py (time at the computer only, coach day
+from day_start_hour to day_start_hour). The VPS side should pin the key to a
+forced command that only accepts the summary on stdin (see README). Nothing but
+the aggregated summary is sent - no raw event stream.
+
+When the coach day rolls over, the previous day is pushed once more so its
+last minutes are included (state in .push_state.json).
 """
 import json
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import coach_summary  # noqa: E402
+
 LOG = HERE / "push.log"
+STATE = HERE / ".push_state.json"
 
 
 def log(msg: str) -> None:
@@ -46,47 +55,6 @@ def log(msg: str) -> None:
             LOG.write_text("\n".join(lines[-300:]) + "\n", encoding="utf-8")
     except OSError:
         pass
-
-
-def merged_config(cfg: dict) -> Path:
-    """Overlay the private config (personal sites/apps) on the public one."""
-    base = json.loads((HERE / cfg.get("category_config", "category_config.windows-zh.json")).read_text(encoding="utf-8"))
-    priv_path = HERE / cfg.get("private_config", "my_categories.json")
-    if priv_path.exists():
-        priv = json.loads(priv_path.read_text(encoding="utf-8"))
-        for key, val in priv.items():
-            if key == "domains" and isinstance(val, dict):
-                base.setdefault("domains", {}).update(val)
-            elif isinstance(val, dict) and key in base and isinstance(base[key], dict):
-                for field in ("apps", "titles"):
-                    if field in val:
-                        base[key][field] = list(dict.fromkeys(val[field] + base[key].get(field, [])))
-                if "weight" in val:
-                    base[key]["weight"] = val["weight"]
-            else:
-                base[key] = val
-    out = HERE / ".merged_config.json"
-    out.write_text(json.dumps(base, ensure_ascii=False), encoding="utf-8")
-    return out
-
-
-def summarize(day: str, config_path: Path) -> dict:
-    cmd = [sys.executable, "-X", "utf8", str(HERE / "analyze_aw.py"), "--fetch",
-           "--from", day, "--to", day, "--config", str(config_path)]
-    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                         timeout=300, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    if res.returncode != 0:
-        raise RuntimeError(f"analyze_aw failed: {res.stderr.strip()[-400:]}")
-    out = res.stdout
-    start = out.find("{")
-    if start < 0:
-        raise RuntimeError("analyze_aw printed no JSON (no events for this day?)")
-    summary = json.loads(out[start:])
-    # Drop YouTube video titles: the coach needs minutes, not what you watched.
-    yt = (summary.get("chrome_extension") or {}).get("youtube")
-    if isinstance(yt, dict):
-        yt.pop("title_breakdown", None)
-    return summary
 
 
 def push(cfg: dict, day: str, payload: dict) -> None:
@@ -103,20 +71,28 @@ def push(cfg: dict, day: str, payload: dict) -> None:
 
 def run_once() -> int:
     cfg = json.loads((HERE / "push_config.json").read_text(encoding="utf-8"))
-    config_path = merged_config(cfg)
-    now = datetime.now()
-    days = [now.strftime("%Y-%m-%d")]
-    # Shortly after midnight, also finalize yesterday.
-    if now.hour < 2:
-        days.insert(0, (now - timedelta(days=1)).strftime("%Y-%m-%d"))
+    hour = int(cfg.get("day_start_hour", coach_summary.DAY_START_HOUR))
+    rules = coach_summary.load_config(HERE / cfg.get("category_config", "category_config.windows-zh.json"),
+                                      HERE / cfg.get("private_config", "my_categories.json"))
+    today = coach_summary.coach_day(day_start_hour=hour)
+    try:
+        last = json.loads(STATE.read_text(encoding="utf-8")).get("last_day")
+    except (OSError, ValueError):
+        last = None
+    days = [today]
+    if last and last < today:
+        days.insert(0, last)  # finalize the previous coach day once
     ok = True
     for day in days:
         try:
-            push(cfg, day, summarize(day, config_path))
-            log(f"pushed {day}")
+            summary = coach_summary.build_summary(day, rules, hour, cfg.get("aw_url", coach_summary.AW_URL))
+            push(cfg, day, summary)
+            log(f"pushed {day} active={summary['totals']['active_min']}min")
         except Exception as exc:  # keep going; the next run retries
             ok = False
             log(f"ERROR {day}: {exc}")
+    if ok:
+        STATE.write_text(json.dumps({"last_day": today}), encoding="utf-8")
     return 0 if ok else 1
 
 
